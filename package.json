@@ -1,7 +1,7 @@
 {
   "name": "lentil",
   "version": "0.0.1",
-  "description": "",
+  "description": "Utility library for working with Immutable.js and Zelkova",
   "repository": {
     "type": "git",
     "url": "https://github.com/thisismN/lentil.git"

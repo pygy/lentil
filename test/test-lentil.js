@@ -1,80 +1,81 @@
 "use strict";
 
-var Z = require("zelkova");
-var I = require("immutable");
 var Lentil = require("../dist/lentil");
 
 module.exports = {
 
-  "The signal": {
-    "should contain the initial data": function (test) {
-      test.expect(1);
-      var data = I.fromJS({ a: "foo", b: "bar" });
-      var src = Z.constant(data);
-      var l = Lentil.create(src, function () {});
-      l.signal.subscribe(function (selection) {
-        test.strictEqual(selection.value, data);
-      });
-      test.done();
-    },
-    "should not emit equivalent repeat values": function (test) {
-      test.expect(1);
-      var data1 = I.fromJS({ a: "foo", b: "bar" });
-      var data2 = I.fromJS({ a: "foo", b: "bar" });
-      var chan = Z.channel(data1);
-      var src = chan.signal;
-      var l = Lentil.create(src, function () {});
-      l.signal.subscribe(function (selection) {
-        test.strictEqual(selection.value, data1);
-      });
-      chan.send(data2);
-      test.done();
-    }
+  "plens should create a PLens from a getter and setter": function (test) {
+    test.expect(1);
+    var lens = Lentil.plens(
+      function (x) { return x; },
+      function (x, y) { return y; }
+    );
+    test.ok(lens instanceof Lentil.PLens);
+    test.done();
   },
 
-  "selecting": {
-    "should produce a new Lentil for a more specific part of the data": function (test) {
-      test.expect(2);
-      var src = Z.constant(I.fromJS({ a: "foo", b: "bar" }));
-      var l = Lentil.create(src, function () {});
-      l.select("a").signal.subscribe(function (selection) { test.equal(selection.value, "foo") });
-      l.select("b").signal.subscribe(function (selection) { test.equal(selection.value, "bar") });
-      test.done();
-    },
-    "should allow multi-part paths": function (test) {
-      test.expect(1);
-      var src = Z.constant(I.fromJS({ a: "foo", b: { test: ["bar"] } }));
-      var l = Lentil.create(src, function () {});
-      l.select("b", "test", 0).signal.subscribe(function (selection) {
-        test.equal(selection.value, "bar");
-      });
-      test.done();
-    },
-    "should be chainable": function (test) {
-      test.expect(1);
-      var src = Z.constant(I.fromJS({ a: "foo", b: { test: ["bar"] } }));
-      var l = Lentil.create(src, function () {});
-      l.select("b").select("test").select(0).signal.subscribe(function (selection) {
-        test.equal(selection.value, "bar");
-      });
-      test.done();
-    }
+  "plens(x => x, (x, y) => y) should produce an identity lens": function (test) {
+    test.expect(2);
+    var lens = Lentil.plens(
+      function (x) { return x; },
+      function (x, y) { return y; }
+    );
+    test.ok(lens.get(true));
+    test.ok(lens.set({}, true));
+    test.done();
   },
 
-  "joining": {
-    "should run the update function with new data after patching the original value": function (test) {
-      test.expect(1);
-      var data1 = I.fromJS({ a: "foo", b: ["bar"] });
-      var data2 = I.fromJS({ a: "foo", b: ["bar", "baz", "fizz"] });
-      var src = Z.constant(data1);
-      var chan = Z.channel(data1.get("b"));
-      var l = Lentil.create(src, function (value) {
-        test.ok(I.is(value, data2))
-      });
-      l.select("b").join(chan.signal);
-      chan.send(I.fromJS(["bar", "baz", "fizz"]));
-      test.done();
-    }
+  "lens.modify should accept the old value and return a new value": function (test) {
+    test.expect(1);
+    var lens = Lentil.plens(
+      function (x) { return x; },
+      function (x, y) { return y; }
+    );
+    var init = {};
+    test.ok(lens.modify(init, function (x) { return x === init; }));
+    test.done();
+  },
+
+  "prop should create a PLens for a property of an anonymous object": function (test) {
+    test.expect(3);
+    var _x = Lentil.prop("x");
+    test.ok(_x.get({ x: true }));
+    var obj1 = { x: false };
+    var obj2 = _x.set(obj1, true);
+    test.ok(obj1 != obj2);
+    test.ok(obj2.x);
+    test.done();
+  },
+
+  "index should create a PLens for an index of an array": function (test) {
+    test.expect(3);
+    var _1 = Lentil.index(1);
+    test.ok(_1.get([false, true, false]));
+    var arr1 = [false, false, false];
+    var arr2 = _1.set(arr1, true);
+    test.ok(arr1 != arr2);
+    test.ok(arr2[1]);
+    test.done();
+  },
+
+  "pl1.compose(pl2) should compose pl1 and pl2": function (test) {
+    test.expect(2);
+    var _x = Lentil.prop("x");
+    var _y = Lentil.prop("y");
+    var _x_y = _y.compose(_x);
+    test.ok(_x_y.get({ x: { y: true }}));
+    test.ok(_x_y.set({ x: { y: false }}, true).x.y);
+    test.done();
+  },
+
+  "pl1.then(pl2) should compose pl2 and pl1": function (test) {
+    test.expect(2);
+    var _x = Lentil.prop("x");
+    var _y = Lentil.prop("y");
+    var _x_y = _x.then(_y);
+    test.ok(_x_y.get({ x: { y: true }}));
+    test.ok(_x_y.set({ x: { y: false }}, true).x.y);
+    test.done();
   }
 
 };

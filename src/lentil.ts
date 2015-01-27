@@ -1,92 +1,127 @@
-///<reference path="../node_modules/zelkova/dist/zelkova.d.ts"/>
-///<reference path="../node_modules/immutable/dist/immutable.d.ts"/>
-import Z = require("zelkova");
-import I = require("immutable");
-
 module lentil {
   "use strict";
 
-  export interface Collection<K, V> extends I.Collection<K, V> {
-    setIn(keyPath: Array<any>, value: V): Collection<K, V>;
-    updateIn(keyPath: Array<any>, updater: (value: any) => any): Collection<K, V>;
+  export class Store<A, B> {
+
+    set: (value: A) => B;
+    value: A;
+
+    constructor(set: (value: A) => B, value: A) {
+      this.set = set;
+      this.value = value;
+    }
   }
 
-  export class Selection {
+  /**
+   * A partial lens.
+   *
+   * `A` is the type of the value and `B` is the type of the "field" the lens is
+   * referring to - "field" does not necessarily refer to the property of an
+   * object, it may also be an array index, or infact anything that there
+   * is a bijection for.
+   */
+  export class PLens<A, B> {
 
-    value: any;
-    _data: Collection<any, any>;
-    _path: any;
-    _update: any;
+    private run: (a: A) => Store<B, A>;
 
-    constructor(data: Collection<any, any>, path: Array<any>, update) {
-      this._data = data;
-      this._path = path;
-      this._update = update;
-      this.value = path.length === 0 ? data : data.getIn(path);
+    constructor(run: (a: A) => Store<B, A>) {
+      this.run = run;
     }
 
-    set(value) {
-      this._update(this._data.setIn(this._path, value));
-    }
-
-    modify(fn) {
-      this._update(this._data.updateIn(this._path, fn));
-    }
-
-    select(...args) {
-      return new Selection(this._data, this._path.concat(args), this._update);
-    }
-
-  }
-
-  export class Lentil {
-
-    signal: Z.Signal<Selection>;
-    _data: Z.Signal<Collection<any, any>>;
-    _path: any;
-    _update: any;
-
-    constructor(data, path, update) {
-      this._data = data;
-      this._path = path;
-      this._update = update;
-      this.signal = data
-        .dropRepeats((curr, next) => I.is(curr.getIn(path), next.getIn(path)))
-        .map(data => new Selection(data, path, update));
-    }
-
-    select(...args) {
-      return new Lentil(this._data, this._path.concat(args), this._update);
-    }
-
-    map(fn) {
-      var values = [];
-      var results = [];
-      return this._data.map(data => {
-        return data.map((item, i) => {
-          if (I.is(values[i], data.getIn(this._path.concat([i])))) {
-            return results[i];
-          } else {
-            values[i] = data.getIn(this._path.concat([i]));
-            return results[i] = fn(new Selection(data, this._path.concat([i]), this._update), i);
-          }
-        });
+    compose<C>(that: PLens<C, A>): PLens<C, B> {
+      return new PLens<C, B>(c => {
+        var x = that.run(c);
+        if (x.value == null) return null;
+        var y = this.run(x.value);
+        return new Store<B, C>(b => x.set(y.set(b)), y.value);
       });
     }
 
-    join(input: Z.Signal<Collection<any, any>>): void {
-      Z.subscribeN(this._data, input, (data, input) => {
-        if (!I.is(data.getIn(this._path), input)) {
-          this._update(data.setIn(this._path, input));
-        }
-      });
+    then<C>(that: PLens<B, C>): PLens<A, C> {
+      return that.compose(this);
+    }
+
+    get(a: A, or?: B): B {
+      var s = this.run(a);
+      return s ? s.value : or;
+    }
+
+    set(a: A, b: B, or?: A): A {
+      var s = this.run(a);
+      return s ? s.set(b) : or;
+    }
+
+    modify(a: A, map: (b: B) => B, or?: A): A {
+      var s = this.run(a);
+      return s ? s.set(map(s.value)) : or;
     }
   }
 
-  export function create(data, update) {
-    return new Lentil(data, [], update);
-  };
+  /**
+   * Create a `PLens` from a getter and setter function. The setter should not
+   * mutate the original object, but instead return a new value with the
+   * updated field.
+   */
+  export function plens<A, B>(get: (value: A) => B, set: (value: A, b: B) => A): PLens<A, B> {
+    return new PLens<A, B>(a => {
+      return new Store<B, A>(b => set(a, b), get(a));
+    });
+  }
 
+  /**
+   * Interface for things that look and (hopefully) behave like an anonymous
+   * object.
+   */
+  export interface ObjLike {
+    [key: string]: any;
+  }
+
+  /**
+   * Shallow-copy an object, used when setting with a `prop`-created `PLens`.
+   */
+  function clone(obj: ObjLike): ObjLike {
+    var result: ObjLike = {};
+    for (var k in obj) {
+      if (obj.hasOwnProperty(k)) {
+        result[k] = obj[k];
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Create a `PLens` for a property of an anonymous object.
+   */
+  export function prop<A>(name: string): PLens<ObjLike, A> {
+    return new PLens<ObjLike, A>(obj => {
+      return new Store<A, ObjLike>(value => {
+        var result = clone(obj);
+        result[name] = value;
+        return result;
+      }, obj[name]);
+    });
+  }
+
+  /**
+   * Interface for things that look and (hopefully) behave like an array.
+   */
+  export interface ArrayLike {
+    [key: number]: any;
+    slice(): ArrayLike;
+  }
+
+  /**
+   * Create a `PLens` for an index of an array.
+   */
+  export function index<A>(i: number): PLens<ArrayLike, A> {
+    return new PLens<ArrayLike, A>(arr => {
+      return new Store<A, ArrayLike>(value => {
+        var result = arr.slice();
+        result[i] = value;
+        return result;
+      }, arr[i]);
+    });
+  }
 }
 
 export = lentil;

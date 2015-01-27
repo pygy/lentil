@@ -1,6 +1,7 @@
 .*
 !/.gitignore
 !/.npmignore
+!/.jshintrc
 /*.sublime*
 /node_modules
 /dist

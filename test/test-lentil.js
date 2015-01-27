@@ -42,7 +42,7 @@ module.exports = {
     test.ok(_x.get({ x: true }));
     var obj1 = { x: false };
     var obj2 = _x.set(obj1, true);
-    test.ok(obj1 != obj2);
+    test.ok(obj1 !== obj2);
     test.ok(obj2.x);
     test.done();
   },
@@ -53,7 +53,7 @@ module.exports = {
     test.ok(_1.get([false, true, false]));
     var arr1 = [false, false, false];
     var arr2 = _1.set(arr1, true);
-    test.ok(arr1 != arr2);
+    test.ok(arr1 !== arr2);
     test.ok(arr2[1]);
     test.done();
   },
@@ -62,9 +62,9 @@ module.exports = {
     test.expect(2);
     var _x = Lentil.prop("x");
     var _y = Lentil.prop("y");
-    var _x_y = _y.compose(_x);
-    test.ok(_x_y.get({ x: { y: true }}));
-    test.ok(_x_y.set({ x: { y: false }}, true).x.y);
+    var _xy = _y.compose(_x);
+    test.ok(_xy.get({ x: { y: true }}));
+    test.ok(_xy.set({ x: { y: false }}, true).x.y);
     test.done();
   },
 
@@ -72,9 +72,9 @@ module.exports = {
     test.expect(2);
     var _x = Lentil.prop("x");
     var _y = Lentil.prop("y");
-    var _x_y = _x.then(_y);
-    test.ok(_x_y.get({ x: { y: true }}));
-    test.ok(_x_y.set({ x: { y: false }}, true).x.y);
+    var _xy = _x.then(_y);
+    test.ok(_xy.get({ x: { y: true }}));
+    test.ok(_xy.set({ x: { y: false }}, true).x.y);
     test.done();
   }
 

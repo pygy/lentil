@@ -76,6 +76,22 @@ module.exports = {
     test.ok(_xy.get({ x: { y: true }}));
     test.ok(_xy.set({ x: { y: false }}, true).x.y);
     test.done();
+  },
+
+  "set should alter the value of the current lens when the current value is null": function (test) {
+    test.expect(1);
+    var _x = Lentil.prop("x");
+    test.deepEqual(_x.set({ x: null }, true), { x: true });
+    test.done();
+  },
+
+  "a composed set should not alter the value of the current lens when the 'previous' value is null": function (test) {
+    test.expect(1);
+    var _x = Lentil.prop("x");
+    var _y = Lentil.prop("y");
+    var _xy = _y.compose(_x);
+    test.deepEqual(_xy.set({ x: null }, true), undefined);
+    test.done();
   }
 
 };

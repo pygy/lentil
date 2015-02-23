@@ -4,4 +4,3 @@
 !/.jshintrc
 /*.sublime*
 /node_modules
-/dist

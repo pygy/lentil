@@ -28,7 +28,7 @@ var lentil;
                 if (x == null || x.value == null)
                     return null;
                 var y = _this.run(x.value);
-                return y.value == null ? null : new Store(function (b) { return x.set(y.set(b)); }, y.value);
+                return y == null ? null : new Store(function (b) { return x.set(y.set(b)); }, y.value);
             });
         };
         PLens.prototype.then = function (that) {

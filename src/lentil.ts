@@ -33,7 +33,7 @@ module lentil {
         var x = that.run(c);
         if (x == null || x.value == null) return null;
         var y = this.run(x.value);
-        return y.value == null ? null : new Store<B, C>(b => x.set(y.set(b)), y.value);
+        return y == null ? null : new Store<B, C>(b => x.set(y.set(b)), y.value);
       });
     }
 

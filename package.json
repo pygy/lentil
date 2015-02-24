@@ -1,6 +1,6 @@
 {
   "name": "lentil",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Partial lenses for TypeScript and JavaScript",
   "main": "./dist/lentil.js",
   "repository": {

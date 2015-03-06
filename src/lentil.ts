@@ -43,17 +43,19 @@ module lentil {
 
     get(a: A, or?: B): B {
       var s = this.run(a);
-      return s ? s.value : or;
+      return s && s.value != null ? s.value : or;
     }
 
     set(a: A, b: B, or?: A): A {
       var s = this.run(a);
-      return s ? s.set(b) : or;
+      var result = s ? s.set(b) : null;
+      return result != null ? result : or;
     }
 
     modify(a: A, map: (b: B) => B, or?: A): A {
       var s = this.run(a);
-      return s ? s.set(map(s.value)) : or;
+      var result = s ? s.set(map(s.value)) : null;
+      return result != null ? result : or;
     }
   }
 
@@ -64,7 +66,7 @@ module lentil {
    */
   export function plens<A, B>(get: (value: A) => B, set: (value: A, b: B) => A): PLens<A, B> {
     return new PLens<A, B>(a => {
-      return new Store<B, A>(b => set(a, b), get(a));
+      return a == null ? null : new Store<B, A>(b => set(a, b), get(a));
     });
   }
 

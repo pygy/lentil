@@ -36,15 +36,17 @@ var lentil;
         };
         PLens.prototype.get = function (a, or) {
             var s = this.run(a);
-            return s ? s.value : or;
+            return s && s.value != null ? s.value : or;
         };
         PLens.prototype.set = function (a, b, or) {
             var s = this.run(a);
-            return s ? s.set(b) : or;
+            var result = s ? s.set(b) : null;
+            return result != null ? result : or;
         };
         PLens.prototype.modify = function (a, map, or) {
             var s = this.run(a);
-            return s ? s.set(map(s.value)) : or;
+            var result = s ? s.set(map(s.value)) : null;
+            return result != null ? result : or;
         };
         return PLens;
     })();
@@ -56,7 +58,7 @@ var lentil;
      */
     function plens(get, set) {
         return new PLens(function (a) {
-            return new Store(function (b) { return set(a, b); }, get(a));
+            return a == null ? null : new Store(function (b) { return set(a, b); }, get(a));
         });
     }
     lentil.plens = plens;
